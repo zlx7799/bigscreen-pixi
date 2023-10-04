@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref, toValue, computed, watch } from 'vue'
+import { onMounted, ref, toValue, computed, watch, nextTick } from 'vue'
 import { Application, Sprite, Graphics, Container, Ticker } from 'pixi.js'
-import gsap from 'gsap'
 import StageBgImg from '@/assets/bg.png'
 import unselectedBall from '@/assets/unselected.png'
 import DisplayBall from './DisplayBall.vue'
-import { isEqual } from "lodash";
+import { isEqual, cloneDeep } from 'lodash'
 const emit = defineEmits(['click-ball', 'click-center-ball'])
 type DOMRef = HTMLElement | null
 type CanvasDomRef = HTMLCanvasElement | null
@@ -19,6 +18,7 @@ interface BallItem {
 interface PieItem {
   inspectRound: number
   departmentNums: number
+  index?: number
 }
 
 interface Props {
@@ -57,6 +57,16 @@ const outermostLayerCircleScaleColor = '#091A58'
 const outermostLayerCircleScaleWidth = 3
 let outermostLayerOfCenterCircleRadius: number
 let outermostLayerOfCenterCircleScaleLength: number
+interface outermostLayerCircleAnimateProgressInterface {
+  graphics: Graphics
+  curNum: number
+  degUnit: number
+}
+let outermostLayerCircleAnimateProgress: outermostLayerCircleAnimateProgressInterface = {
+  graphics: new Graphics(),
+  curNum: 0,
+  degUnit: 0
+}
 
 const innerLayerCircleScaleColor = '#27498D'
 const innerLayerCircleScaleBGColor = '#030A4D'
@@ -82,20 +92,41 @@ const PIE_COLOR_LIST = [
 const PIE_DEFAULT_COLOR = '#061E4E'
 let pieWidth: number
 let pieRadius: number
+interface Pie {
+  startAngle: number
+  endAngle: number
+  proportion: number
+}
+let pieInfoList: Pie[] = []
 
 let ringWidth: number
 let ringRadius: number
 const CONIC_RING_START_COLOR = 'rgba(1, 10, 32, 0.2)'
 const CONIC_RING_END_COLOR = 'rgba(59, 194, 255, 1)'
+interface centerRadialGradientProgressInterface {
+  arc: Graphics
+  curNum: number
+  splitNum: number
+  radius: number
+  middleColor: string[][]
+}
+
+let centerRadialGradientProgress: centerRadialGradientProgressInterface = {
+  arc: new Graphics(),
+  curNum: 0,
+  splitNum: 0,
+  radius: 0,
+  middleColor: [[], [], [], []]
+}
 
 let ballWidth = ref<number>()
-const animateTime = 1 // 秒
 let percent = ref<number>(0)
 let pointerContainerStyle = computed(() => {
-  console.log('%c percent.value', 'color: red', percent.value);
   return {
     width: '4px',
-    height: `${(innerLayerOfCenterStaticCircleRadius + innerLayerOfCenterStaticCircleScaleLength / 2 ) * 2 }px`,
+    height: `${
+      (innerLayerOfCenterStaticCircleRadius + innerLayerOfCenterStaticCircleScaleLength / 2) * 2
+    }px`,
     transform: `rotate(${360 * percent.value}deg)`
   }
 })
@@ -171,6 +202,7 @@ const initCanvas = () => {
     ctx.canvas.height = height * window.devicePixelRatio
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
   }
+  canvas.onmousemove = canvasMouseMove
 }
 
 /**
@@ -295,12 +327,16 @@ const initData = () => {
     pieRadius - pieWidth / 2 - outermostLayerOfCenterCircleScaleLength / 2 - ringWidth / 2 // 拿饼的半径一层一层往下算 环的半径也在中间
 
   ballWidth.value = (ringRadius - ringWidth / 2 - outermostLayerOfCenterCircleScaleLength / 2) * 2 // 球的宽度
-
   percent.value =
     props.pieList.reduce((sum, item) => sum + item.departmentNums, 0) / props.allDepartmentNums // 百分比
 
   pointerStyle.value = {
-    height: `${innerLayerOfCenterStaticCircleRadius - ringRadius + ringWidth / 2 }px`,
+    height: `${
+      innerLayerOfCenterStaticCircleRadius -
+      ringRadius +
+      ringWidth / 2 +
+      innerLayerOfCenterStaticCircleScaleLength / 2
+    }px`,
     backgroundColor: CONIC_RING_END_COLOR
   }
 }
@@ -337,7 +373,9 @@ const initOutermostLayerCircle = () => {
  * @return {*}
  */
 const initOutermostLayerCircleAnimate = () => {
-  const graphics = new Graphics()
+  const graphics = outermostLayerCircleAnimateProgress.graphics
+    ? outermostLayerCircleAnimateProgress.graphics
+    : new Graphics()
   const degUnit = (Math.PI * 2) / 100 // 3.6度
   const container = new Container()
   app.stage.addChild(container)
@@ -351,6 +389,7 @@ const initOutermostLayerCircleAnimate = () => {
   ticker.autoStart = true
   ticker.add(() => {
     if (i > curNum) {
+      ticker.stop()
       return false
     }
     const angle = i * degUnit
@@ -369,8 +408,57 @@ const initOutermostLayerCircleAnimate = () => {
     i++
   })
   container.addChild(graphics)
+  outermostLayerCircleAnimateProgress = {
+    graphics,
+    curNum,
+    degUnit
+  }
 }
+/**
+ * @description: 更新最外层圆的动画
+ * @return {*}
+ */
+const updateOutermostLayerCircleAnimate = () => {
+  const { graphics, curNum: num, degUnit } = outermostLayerCircleAnimateProgress
+  let i = num
+  let curNum = Math.ceil(percent.value * 100)
+  let diff = curNum - i
+  let fps = Math.floor(60 / diff) // 计算画一个格要经过多少帧
+  let count = fps - 1
+  let ticker = new Ticker()
+  ticker.autoStart = true
+  ticker.add(() => {
+    count++
+    if (count == fps) {
+      count = 0
+    } else {
+      return false
+    }
+    if (i > curNum) {
+      ticker.stop()
+      return false
+    }
+    const angle = i * degUnit
+    graphics.lineStyle(outermostLayerCircleScaleWidth, PIE_COLOR_LIST[Math.floor(i / 10)])
+    const startX =
+      (outermostLayerOfCenterCircleRadius - outermostLayerOfCenterCircleScaleLength) *
+      Math.cos(angle)
+    const startY =
+      (outermostLayerOfCenterCircleRadius - outermostLayerOfCenterCircleScaleLength) *
+      Math.sin(angle)
+    const endX = outermostLayerOfCenterCircleRadius * Math.cos(angle)
+    const endY = outermostLayerOfCenterCircleRadius * Math.sin(angle)
 
+    graphics.moveTo(startX, startY)
+    graphics.lineTo(endX, endY)
+    i++
+  })
+  outermostLayerCircleAnimateProgress = {
+    graphics,
+    curNum,
+    degUnit
+  }
+}
 /**
  * @description: 绘制内层静态圆
  * @return {*}
@@ -446,36 +534,93 @@ const initPie = () => {
   const intervalAngle = Math.PI / 120
   let startAngle = -Math.PI / 2
   const allAngle = Math.PI * 2 - intervalNums * intervalAngle
-  interface Pie {
-    startAngle: number
-    endAngle: number
-    proportion: number
-  }
-
-  let pieInfoList: Pie[] = []
+  // pieList.forEach((pie: PieItem, index: number) => {
+  //   let proportion = pie.departmentNums / allDepartmentNums
+  //   const curAngle = proportion * allAngle
+  //   canvasDrawArc(pieRadius, startAngle, startAngle  + intervalAngle, '#000')
+  //   startAngle = startAngle + intervalAngle
+  //   let endAngle = startAngle + curAngle
+  //   if(index == pieList.length -1){
+  //     endAngle = -Math.PI / 2 + Math.PI * 2 * percent.value
+  //   }
+  //   canvasDrawArc(pieRadius, startAngle, endAngle, PIE_COLOR_LIST[index])
+  //   pieInfoList.push({ startAngle, endAngle, proportion })
+  //   startAngle = endAngle
+  // })
   pieList.forEach((pie: PieItem, index: number) => {
     let proportion = pie.departmentNums / allDepartmentNums
     const curAngle = proportion * allAngle
+    canvasDrawArc(pieRadius, startAngle, startAngle + intervalAngle, '#000')
     startAngle = startAngle + intervalAngle
-    const endAngle = startAngle + curAngle
+    let endAngle = startAngle + curAngle
+    if (index == pieList.length - 1) {
+      endAngle = -Math.PI / 2 + Math.PI * 2 * percent.value
+    }
     canvasDrawArc(pieRadius, startAngle, endAngle, PIE_COLOR_LIST[index])
     pieInfoList.push({ startAngle, endAngle, proportion })
     startAngle = endAngle
   })
-
-  // let tl = gsap.timeline()
-  // pieInfoList.forEach((pie, index) => {
-  //   const arc = new Graphics()
-  //   tl.to(arc, {
-  //     duration: animateTime * pie.proportion,
-  //     endAngle: pie.endAngle,
-  //     onUpdate: () => {
-  //       canvasDrawArc(pieRadius, pie.startAngle, (arc as any).endAngle, PIE_COLOR_LIST[index])
-  //     }
-  //   })
-  // })
 }
 
+const canvasMouseMove = (e: any) => {
+  let point = {
+    x: e.offsetX,
+    y: e.offsetY
+  }
+  let pointToCenterDistance = Math.sqrt(
+    Math.pow(point.x - centerPos.x, 2) + Math.pow(point.y - centerPos.y, 2)
+  ) // 鼠标到圆心的距离
+  let radian = -Math.atan2(point.x - centerPos.x, point.y - centerPos.y) + Math.PI / 2// 计算弧度
+  let startDistance = pieRadius - pieWidth / 2
+  let endDistance = pieRadius + pieWidth / 2
+  if (pointToCenterDistance > outermostLayerOfCenterCircleRadius) {
+    return
+  }
+  if (pointToCenterDistance > startDistance && pointToCenterDistance < endDistance){
+    if(pieInfoList.length > 0){
+      let index = pieInfoList.findIndex(pie => radian > pie.startAngle && radian < pie.endAngle)
+      if(index != -1){
+        handleShowPieInfoWindow({...props.pieList[index], index}, point)
+      } else {
+        handleHideBallInfoWindow()
+      }
+    }
+  } else {
+    handleHideBallInfoWindow()
+  }
+}
+
+const drawRing = (
+  i: number,
+  middleColor: string[][],
+  curNum: number,
+  radius: number,
+  splitNum: number
+) => {
+  const arc = centerRadialGradientProgress.arc ? centerRadialGradientProgress.arc : new Graphics()
+  arc.lineStyle(
+    ringWidth,
+    `rgba(${middleColor[0][i]}, ${middleColor[1][i]}, ${middleColor[2][i]}, ${middleColor[3][i]})`
+  )
+  if (i == curNum - 1) {
+    arc.arc(
+      centerPos.x,
+      centerPos.y,
+      radius,
+      -Math.PI / 2 + ((Math.PI * 2) / splitNum) * i,
+      -Math.PI / 2 + ((Math.PI * 2) / splitNum) * (i + 1)
+    )
+  } else {
+    arc.arc(
+      centerPos.x,
+      centerPos.y,
+      radius,
+      -Math.PI / 2 + ((Math.PI * 2) / splitNum) * i,
+      -Math.PI / 2 + ((Math.PI * 2) / splitNum) * (i + 2)
+    )
+  }
+  app.stage.addChild(arc)
+}
 /**
  * @description: 初始化中间渐变色圆环
  * @return {*}
@@ -505,78 +650,103 @@ const initCenterRadialGradient = (radius: number, begin: string, end: string) =>
     }
   })
   let curNum = Math.floor(percent.value * splitNum)
-  function drawRing(i: number) {
-    const arc = new Graphics()
-    arc.lineStyle(
-      ringWidth,
-      `rgba(${middleColor[0][i]}, ${middleColor[1][i]}, ${middleColor[2][i]}, ${middleColor[3][i]})`
-    )
-    if (i == curNum - 1) {
-      arc.arc(
-        centerPos.x,
-        centerPos.y,
-        radius,
-        -Math.PI / 2 + ((Math.PI * 2) / splitNum) * i,
-        -Math.PI / 2 + ((Math.PI * 2) / splitNum) * (i + 1)
-      )
-    } else {
-      arc.arc(
-        centerPos.x,
-        centerPos.y,
-        radius,
-        -Math.PI / 2 + ((Math.PI * 2) / splitNum) * i,
-        -Math.PI / 2 + ((Math.PI * 2) / splitNum) * (i + 2)
-      )
-    }
-    app.stage.addChild(arc)
-  }
 
   let i = 0
-  let drawCount = Math.ceil(curNum / 60)
+  let drawCount = Math.floor(curNum / 60)
   let ticker = new Ticker()
   ticker.autoStart = true
   ticker.add(() => {
-    if (i == curNum - 2) {
+    if (i == curNum) {
+      ticker.stop()
       return false
     }
     if (drawCount == 1) {
-      drawRing(i)
+      drawRing(i, middleColor, curNum, radius, splitNum)
       i++
     } else {
       for (let j = 0; j < drawCount; j++) {
         if (i == curNum) {
-          // app.ticker.stop()
-          // break;
+          ticker.stop()
           return false
         }
-        drawRing(i)
+        drawRing(i, middleColor, curNum, radius, splitNum)
         i++
       }
     }
   })
+  centerRadialGradientProgress = {
+    arc: centerRadialGradientProgress.arc,
+    middleColor,
+    splitNum,
+    radius,
+    curNum
+  }
 }
 
+const updateCenterRadialGradient = () => {
+  const { curNum: num, splitNum, middleColor, radius } = centerRadialGradientProgress
+  let i = num - 1
+  let curNum = Math.floor(percent.value * splitNum)
 
-const generateCircles = (
-  center: Point,
-  minRadius: number,
-  ballWidth: number
-) => {
+  let diff = curNum - i
+  let fps = Math.floor(60 / diff) // 计算画一个格要经过多少帧
+  let count = fps - 1
+
+  let drawCount = Math.floor(curNum / 60)
+  let ticker = new Ticker()
+  ticker.autoStart = true
+  ticker.add(() => {
+    count++
+    if (count == fps) {
+      count = 0
+    } else {
+      return false
+    }
+    if (i == curNum) {
+      ticker.stop()
+      return false
+    }
+    if (drawCount == 1) {
+      drawRing(i, middleColor, curNum, radius, splitNum)
+      i++
+    } else {
+      for (let j = 0; j < drawCount; j++) {
+        if (i == curNum) {
+          ticker.stop()
+          return false
+        }
+        drawRing(i, middleColor, curNum, radius, splitNum)
+        i++
+      }
+    }
+  })
+  centerRadialGradientProgress = {
+    arc: centerRadialGradientProgress.arc,
+    middleColor,
+    splitNum,
+    radius,
+    curNum
+  }
+}
+
+const generateCircles = (center: Point, minRadius: number, ballWidth: number) => {
   // 输入参数
   const CENTER = center
   const ballNum = props.ballList.length
-  console.log('%c ballNum', 'color: red', ballNum);
   // 计算每个扇区角度
   const ANGLE = (Math.PI * 2) / ballNum
 
-  const startAngle = -Math.PI / 4 
+  const startAngle = -Math.PI / 4
 
   // 保存生成坐标
   const POS = []
   for (let i = 0; i < ballNum; i++) {
     const angle = startAngle + ANGLE * i
     let maxRadius = containerHeight / 2 - ballWidth / 2
-    if ((angle > - -Math.PI / 4 && angle < Math.PI / 4 ) || (angle > - -Math.PI * 3 / 4 && angle < Math.PI * 5 / 4 )){
+    if (
+      (angle > -(-Math.PI) / 4 && angle < Math.PI / 4) ||
+      (angle > (-(-Math.PI) * 3) / 4 && angle < (Math.PI * 5) / 4)
+    ) {
       maxRadius = containerWidth / 2 - ballWidth / 2
     }
     const RADIUS = minRadius + (maxRadius - minRadius) * Math.random()
@@ -598,21 +768,36 @@ const handleClickBall = (ballInfo: BallItem) => {
 
 const handleShowBallInfoWindow = (ballInfo: BallItem) => {
   let index = ballInfo.index
-  if (index || index === 0){
+  if (index || index === 0) {
     infoWindowInfo.value = {
       ...ballInfo,
       x: posList.value![index].x,
       y: posList.value![index].y,
       visible: true,
-      text: `第${ballInfo.inspectRound}轮`
+      text: `第${ballInfo.inspectRound}轮`,
+      type: 'ball'
+    }
+  }
+}
+
+const handleShowPieInfoWindow = (pieInfo: PieItem, pos: Point) => {
+  let index = pieInfo.index
+  if (index || index === 0) {
+    infoWindowInfo.value = {
+      ...pieInfo,
+      x: pos.x,
+      y: pos.y,
+      visible: true,
+      text: `第${pieInfo.inspectRound}轮`,
+      type: 'pie'
     }
   }
 }
 const infoWindowStyle = computed(() => {
-  if(infoWindowInfo.value.x && infoWindowInfo.value.y && ballWidth.value) {
+  if (infoWindowInfo.value.x && infoWindowInfo.value.y && ballWidth.value) {
     return {
       top: `${infoWindowInfo.value.y - ballWidth.value / 2}px`,
-      left: `${infoWindowInfo.value.x + ballWidth.value / 2 + 10}px`,
+      left: `${infoWindowInfo.value.x + ballWidth.value / 2 + 10}px`
     }
   } else {
     return {}
@@ -624,17 +809,53 @@ const handleHideBallInfoWindow = () => {
   }
 }
 
-watch(() => props.ballList, (newVal, oldVal) => {
-  if(!newVal || !oldVal){ return }
-  if(ballWidth.value){
-    posList.value = generateCircles(
-      centerPos,
-      outermostLayerOfCenterCircleRadius + ballWidth.value,
-      ballWidth.value
-    )
-  }
-}, {deep: true})
+watch(
+  () => props.ballList,
+  (newVal, oldVal) => {
+    if (!newVal || !oldVal) {
+      return
+    }
+    if (ballWidth.value) {
+      posList.value = generateCircles(
+        centerPos,
+        outermostLayerOfCenterCircleRadius + ballWidth.value,
+        ballWidth.value
+      )
+    }
+  },
+  { deep: true }
+)
 
+watch(
+  () => cloneDeep(props.pieList),
+  (newVal, oldVal) => {
+    if (!newVal || !oldVal) {
+      return
+    }
+    if (
+      newVal.length > oldVal.length &&
+      isEqual(newVal.slice(0, oldVal.length), oldVal) &&
+      ballWidth.value
+    ) {
+      // 数据是增加的情况,动画增加
+      percent.value =
+        props.pieList.reduce((sum, item) => sum + item.departmentNums, 0) / props.allDepartmentNums // 更新指针的变化
+      updateOutermostLayerCircleAnimate()
+      updateCenterRadialGradient()
+    } else {
+      // 重新画
+      percent.value =
+        props.pieList.reduce((sum, item) => sum + item.departmentNums, 0) / props.allDepartmentNums // 更新指针的变化
+      // 重新画最外层刻度线
+      outermostLayerCircleAnimateProgress.graphics.clear()
+      initOutermostLayerCircleAnimate()
+
+      centerRadialGradientProgress.arc.clear()
+      initCenterRadialGradient(ringRadius, CONIC_RING_START_COLOR, CONIC_RING_END_COLOR)
+    }
+  },
+  { deep: true }
+)
 
 onMounted(() => {
   initData()
@@ -671,18 +892,33 @@ onMounted(() => {
       <div class="pointer-transparent"></div>
     </div>
     <template v-for="(item, index) in ballList" :key="index">
-        <display-ball :ball-info="item" :ball-width="ballWidth || 0" :pos="posList && posList[index]" @click-ball="(ballInfo) =>  handleClickBall({...ballInfo, index})" @mouse-move-ball="(ballInfo) =>  handleShowBallInfoWindow({...ballInfo, index})" @mouse-leave-ball="handleHideBallInfoWindow"></display-ball>
+      <display-ball
+        :ball-info="item"
+        :ball-width="ballWidth || 0"
+        :pos="posList && posList[index]"
+        @click-ball="(ballInfo) => handleClickBall({ ...ballInfo, index })"
+        @mouse-move-ball="(ballInfo) => handleShowBallInfoWindow({ ...ballInfo, index })"
+        @mouse-leave-ball="handleHideBallInfoWindow"
+      ></display-ball>
     </template>
     <div class="info-window" v-if="infoWindowInfo.visible" :style="infoWindowStyle">
       <div class="title">{{ infoWindowInfo.text }}</div>
-      <div class="row">
-        <div class="label"><span class="circle"></span>问题数</div>
-        <div class="content">{{ infoWindowInfo.questionNums }}</div>
-      </div>
-      <div class="row">
-        <div class="label"><span class="circle"></span>百分比</div>
-        <div class="content">{{ (infoWindowInfo.inspectProgress * 100).toFixed(0) }}%</div>
-      </div>
+      <template v-if="infoWindowInfo.type == 'ball'">
+        <div class="row">
+          <div class="label"><span class="circle"></span>问题数</div>
+          <div class="content">{{ infoWindowInfo.questionNums }}</div>
+        </div>
+        <div class="row">
+          <div class="label"><span class="circle"></span>百分比</div>
+          <div class="content">{{ (infoWindowInfo.inspectProgress * 100).toFixed(0) }}%</div>
+        </div>
+      </template>
+      <template v-else>
+        <div class="row">
+          <div class="label"><span class="circle"></span>部门数</div>
+          <div class="content">{{ infoWindowInfo.departmentNums }}</div>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -705,7 +941,7 @@ onMounted(() => {
   position: absolute;
   z-index: 2;
 }
-.pointer-container{
+.pointer-container {
   position: absolute;
   top: 0;
   left: 0;
@@ -715,7 +951,7 @@ onMounted(() => {
   z-index: 4;
   transition: all 1s ease;
 }
-.pointer-container .pointer{
+.pointer-container .pointer {
   width: 100%;
 }
 
@@ -734,34 +970,34 @@ onMounted(() => {
 .info-window {
   position: absolute;
   width: 160px;
-  border: 1px solid #53485C;
+  border: 1px solid #53485c;
   border-radius: 4px;
   background-color: #000224;
   box-sizing: border-box;
   padding: 5px 10px;
   z-index: 999;
 }
-.info-window .title{
+.info-window .title {
   font-size: 16px;
   color: #fff;
 }
-.info-window .row{
+.info-window .row {
   font-size: 12px;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.info-window .row .circle{
+.info-window .row .circle {
   display: inline-block;
   margin-right: 8px;
   width: 4px;
   height: 4px;
-  background-color: #783E03;
+  background-color: #783e03;
   border-radius: 100%;
 }
 
-.info-window .row .content{
-  color: #783E03;
+.info-window .row .content {
+  color: #783e03;
 }
 </style>

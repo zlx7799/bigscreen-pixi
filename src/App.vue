@@ -3,7 +3,7 @@
  * @Author: zhoulx
  * @Date: 2023-09-25 08:47:24
  * @LastEditors: zhoulx
- * @LastEditTime: 2023-10-04 16:26:37
+ * @LastEditTime: 2023-10-05 01:37:07
 -->
 <script setup lang="ts">
 import DisplayResult from './components/DisplayResult/Index.vue'
@@ -65,7 +65,7 @@ const addData = () => {
     inspectProgress: Math.random()
   })
   pieList.value.push({
-    inspectRound: ballList.value.length + 1,
+    inspectRound: pieList.value.length + 1,
     departmentNums: 10
   })
 }
@@ -137,6 +137,8 @@ const resetData = () => {
 .wrapper {
   width: 651px;
   height: 450px;
+  /* width: 651px;
+  height: 600px; */
   /* width: 1302px;
   height: 900px; */
   /* width: 2144px;

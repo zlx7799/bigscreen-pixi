@@ -178,5 +178,6 @@ onMounted(() => {
   font-size: 12px;
   cursor: pointer;
   z-index: 4;
+  color: #fff;
 }
 </style>
