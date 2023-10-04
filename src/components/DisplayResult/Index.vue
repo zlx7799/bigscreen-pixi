@@ -13,6 +13,7 @@ interface BallItem {
   inspectRound: number
   questionNums: number
   inspectProgress: number
+  index?: number
 }
 
 interface PieItem {
@@ -35,83 +36,8 @@ interface Point {
 const props = withDefaults(defineProps<Props>(), {
   centerText: `十二届总巡察`,
   allDepartmentNums: 120,
-  ballList: () => [
-    {
-      inspectRound: 1,
-      questionNums: 10,
-      inspectProgress: 1
-    },
-    {
-      inspectRound: 2,
-      questionNums: 10,
-      inspectProgress: 0.55
-    },
-    {
-      inspectRound: 3,
-      questionNums: 10,
-      inspectProgress: 0.45
-    },
-    {
-      inspectRound: 4,
-      questionNums: 10,
-      inspectProgress: 0.75
-    },
-    {
-      inspectRound: 5,
-      questionNums: 10,
-      inspectProgress: 0.85
-    }
-  ],
-  pieList: () => [
-    {
-      inspectRound: 1,
-      departmentNums: 10
-    },
-    {
-      inspectRound: 2,
-      departmentNums: 10
-    },
-    {
-      inspectRound: 3,
-      departmentNums: 10
-    },
-    {
-      inspectRound: 4,
-      departmentNums: 10
-    },
-    {
-      inspectRound: 5,
-      departmentNums: 10
-    }
-    // {
-    //   inspectRound: 6,
-    //   departmentNums: 10
-    // },
-    // {
-    //   inspectRound: 7,
-    //   departmentNums: 10
-    // },
-    // {
-    //   inspectRound: 8,
-    //   departmentNums: 10
-    // },
-    // {
-    //   inspectRound: 9,
-    //   departmentNums: 10
-    // },
-    // {
-    //   inspectRound: 10,
-    //   departmentNums: 10
-    // },
-    // {
-    //   inspectRound: 11,
-    //   departmentNums: 10
-    // },
-    // {
-    //   inspectRound: 12,
-    //   departmentNums: 10
-    // },
-  ]
+  ballList: () => [],
+  pieList: () => []
 })
 
 const displayContainer = ref<DOMRef>(null)
@@ -413,16 +339,6 @@ const initOutermostLayerCircle = () => {
 const initOutermostLayerCircleAnimate = () => {
   const graphics = new Graphics()
   const degUnit = (Math.PI * 2) / 100 // 3.6度
-  // for (let i = 0; i < 100; i++) {
-  //   const angle = i * degUnit
-  //   const startX = centerPos.x + (outermostLayerOfCenterCircleRadius - outermostLayerOfCenterCircleScaleLength) * Math.cos(angle)
-  //   const startY = centerPos.y + (outermostLayerOfCenterCircleRadius - outermostLayerOfCenterCircleScaleLength) * Math.sin(angle)
-  //   const endX = centerPos.x + outermostLayerOfCenterCircleRadius * Math.cos(angle)
-  //   const endY = centerPos.y + outermostLayerOfCenterCircleRadius * Math.sin(angle)
-
-  //   graphics.moveTo(startX, startY)
-  //   graphics.lineTo(endX, endY)
-  // }
   const container = new Container()
   app.stage.addChild(container)
   container.x = centerPos.x
@@ -653,7 +569,7 @@ const generateCircles = (
   // 计算每个扇区角度
   const ANGLE = (Math.PI * 2) / ballNum
 
-  const startAngle = -Math.PI / 4 + ANGLE
+  const startAngle = -Math.PI / 4 
 
   // 保存生成坐标
   const POS = []
@@ -675,18 +591,50 @@ const generateCircles = (
   }
   return POS
 }
+const infoWindowInfo = ref<any>({})
+const handleClickBall = (ballInfo: BallItem) => {
+  emit('click-ball', ballInfo)
+}
+
+const handleShowBallInfoWindow = (ballInfo: BallItem) => {
+  let index = ballInfo.index
+  if (index || index === 0){
+    infoWindowInfo.value = {
+      ...ballInfo,
+      x: posList.value![index].x,
+      y: posList.value![index].y,
+      visible: true,
+      text: `第${ballInfo.inspectRound}轮`
+    }
+  }
+}
+const infoWindowStyle = computed(() => {
+  if(infoWindowInfo.value.x && infoWindowInfo.value.y && ballWidth.value) {
+    return {
+      top: `${infoWindowInfo.value.y - ballWidth.value / 2}px`,
+      left: `${infoWindowInfo.value.x + ballWidth.value / 2 + 10}px`,
+    }
+  } else {
+    return {}
+  }
+})
+const handleHideBallInfoWindow = () => {
+  infoWindowInfo.value = {
+    visible: false
+  }
+}
 
 watch(() => props.ballList, (newVal, oldVal) => {
-  console.log('%c newVal, oldVal', 'color: red', newVal, oldVal);
   if(!newVal || !oldVal){ return }
-  if(isEqual(newVal.slice(0, oldVal.length), oldVal) && ballWidth.value){
+  if(ballWidth.value){
     posList.value = generateCircles(
       centerPos,
       outermostLayerOfCenterCircleRadius + ballWidth.value,
       ballWidth.value
     )
   }
-})
+}, {deep: true})
+
 
 onMounted(() => {
   initData()
@@ -707,7 +655,6 @@ onMounted(() => {
       outermostLayerOfCenterCircleRadius + ballWidth.value,
       ballWidth.value
     )
-    console.log('%c posList', 'color: red', posList.value);
   }
 })
 </script>
@@ -716,7 +663,7 @@ onMounted(() => {
   <div class="wrapper">
     <div class="display-container" ref="displayContainer"></div>
     <canvas class="display-canvas" ref="displayCanvas"></canvas>
-    <div class="center-ball" :style="centerBallStyle">
+    <div class="center-ball" :style="centerBallStyle" @click="emit('click-center-ball')">
       {{ centerText }}
     </div>
     <div class="pointer-container" :style="pointerContainerStyle">
@@ -724,8 +671,19 @@ onMounted(() => {
       <div class="pointer-transparent"></div>
     </div>
     <template v-for="(item, index) in ballList" :key="index">
-        <display-ball :ball-info="item" :ball-width="ballWidth || 0" :pos="posList && posList[index]"></display-ball>
+        <display-ball :ball-info="item" :ball-width="ballWidth || 0" :pos="posList && posList[index]" @click-ball="(ballInfo) =>  handleClickBall({...ballInfo, index})" @mouse-move-ball="(ballInfo) =>  handleShowBallInfoWindow({...ballInfo, index})" @mouse-leave-ball="handleHideBallInfoWindow"></display-ball>
     </template>
+    <div class="info-window" v-if="infoWindowInfo.visible" :style="infoWindowStyle">
+      <div class="title">{{ infoWindowInfo.text }}</div>
+      <div class="row">
+        <div class="label"><span class="circle"></span>问题数</div>
+        <div class="content">{{ infoWindowInfo.questionNums }}</div>
+      </div>
+      <div class="row">
+        <div class="label"><span class="circle"></span>百分比</div>
+        <div class="content">{{ (infoWindowInfo.inspectProgress * 100).toFixed(0) }}%</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -772,5 +730,38 @@ onMounted(() => {
   color: #fff;
   z-index: 3;
   box-sizing: border-box;
+}
+.info-window {
+  position: absolute;
+  width: 160px;
+  border: 1px solid #53485C;
+  border-radius: 4px;
+  background-color: #000224;
+  box-sizing: border-box;
+  padding: 5px 10px;
+  z-index: 999;
+}
+.info-window .title{
+  font-size: 16px;
+  color: #fff;
+}
+.info-window .row{
+  font-size: 12px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.info-window .row .circle{
+  display: inline-block;
+  margin-right: 8px;
+  width: 4px;
+  height: 4px;
+  background-color: #783E03;
+  border-radius: 100%;
+}
+
+.info-window .row .content{
+  color: #783E03;
 }
 </style>

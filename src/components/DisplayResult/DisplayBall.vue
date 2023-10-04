@@ -2,6 +2,7 @@
 import { onMounted, ref, toValue, computed, watch } from 'vue'
 import selectedBall from '@/assets/selected.png'
 import unselectedBall from '@/assets/unselected.png'
+const emit = defineEmits(['click-ball', 'mouse-move-ball', 'mouse-leave-ball'])
 type CanvasDomRef = HTMLCanvasElement | null
 interface BallItem {
   inspectRound: number
@@ -111,34 +112,32 @@ const initRing = () => {
   }
 }
 watch(() => props.ballWidth, (newVal, oldVal) => {
-  if(newVal > 0){
+  if(newVal > 0 && ballCanvas.value){
     initCanvas()
     initRing()
   }
-})
+}, {immediate: true})
+
 watch(isMouseMove, (newVal) => {
   initRing()
+  if(newVal){
+    emit('mouse-move-ball', props.ballInfo)
+  } else {
+    emit('mouse-leave-ball')
+  }
 })
 onMounted(() => {
-  
+  if(ballCanvas.value && props.ballWidth){
+    initCanvas()
+  }
+  initRing()
 })
 </script>
 <template>
   <div class="ball-container" :style="ballContainerStyle">
     <canvas ref="ballCanvas" class="ball-canvas"></canvas>
-    <div class="ball" :style="ballStyle" @mousemove="isMouseMove = true" @mouseleave="isMouseMove = false">
+    <div class="ball" :style="ballStyle" @mousemove="isMouseMove = true;" @mouseleave="isMouseMove = false;" @click="emit('click-ball', props.ballInfo)">
       {{ text }}
-    </div>
-    <div class="info-window" v-if="isMouseMove">
-      <div class="title">{{ text }}</div>
-      <div class="row">
-        <div class="label"><span class="circle"></span>问题数</div>
-        <div class="content">{{ props.ballInfo.questionNums }}</div>
-      </div>
-      <div class="row">
-        <div class="label"><span class="circle"></span>百分比</div>
-        <div class="content">{{ (props.ballInfo.inspectProgress * 100).toFixed(0) }}%</div>
-      </div>
     </div>
   </div>
 </template>
@@ -179,39 +178,5 @@ onMounted(() => {
   font-size: 12px;
   cursor: pointer;
   z-index: 4;
-}
-.info-window {
-  position: absolute;
-  left: 110%;
-  width: 160px;
-  border: 1px solid #53485C;
-  border-radius: 4px;
-  background-color: #000224;
-  box-sizing: border-box;
-  padding: 5px 10px;
-  z-index: 999;
-}
-.info-window .title{
-  font-size: 16px;
-  color: #fff;
-}
-.info-window .row{
-  font-size: 12px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.info-window .row .circle{
-  display: inline-block;
-  margin-right: 8px;
-  width: 4px;
-  height: 4px;
-  background-color: #783E03;
-  border-radius: 100%;
-}
-
-.info-window .row .content{
-  color: #783E03;
 }
 </style>

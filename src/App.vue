@@ -3,11 +3,11 @@
  * @Author: zhoulx
  * @Date: 2023-09-25 08:47:24
  * @LastEditors: zhoulx
- * @LastEditTime: 2023-10-04 08:08:53
+ * @LastEditTime: 2023-10-04 16:26:37
 -->
 <script setup lang="ts">
 import DisplayResult from './components/DisplayResult/Index.vue'
-import { onMounted, ref, toValue, computed } from 'vue'
+import { onMounted, ref, toValue, computed,reactive } from 'vue'
 
 let ballList = ref([
   {
@@ -80,12 +80,12 @@ const resetData = () => {
     {
       inspectRound: 2,
       questionNums: 10,
-      inspectProgress: 0.55
+      inspectProgress: 0.54
     },
     {
       inspectRound: 3,
       questionNums: 10,
-      inspectProgress: 0.45
+      inspectProgress: 0.41
     },
     {
       inspectRound: 4,
