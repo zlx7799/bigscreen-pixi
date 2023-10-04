@@ -881,6 +881,9 @@ watch(
       centerRadialGradientProgress.arc.clear()
       initCenterRadialGradient(ringRadius, CONIC_RING_START_COLOR, CONIC_RING_END_COLOR)
 
+      ctx?.clearRect(0, 0, containerWidth, containerHeight)
+      lastPercent = 0
+      lastPieEndAngle = -Math.PI / 2
       initPie()
     }
   },
