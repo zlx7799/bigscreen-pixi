@@ -3,7 +3,7 @@
  * @Author: zhoulx
  * @Date: 2023-09-25 08:47:24
  * @LastEditors: zhoulx
- * @LastEditTime: 2023-10-05 01:37:07
+ * @LastEditTime: 2023-10-05 04:44:51
 -->
 <script setup lang="ts">
 import DisplayResult from './components/DisplayResult/Index.vue'
@@ -125,7 +125,7 @@ const resetData = () => {
 
 <template>
   <div class="wrapper">
-    <DisplayResult :ball-list="ballList" :pie-list="pieList" />
+    <DisplayResult :ball-list="ballList" :pie-list="pieList" @click-ball="(val) => console.log(val)" @click-center-ball="(val) => console.log(val)" />
   </div>
   <div class="btn-container">
     <div class="btn" @click="addData">增加数据</div>

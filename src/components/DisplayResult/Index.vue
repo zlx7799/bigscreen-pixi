@@ -996,6 +996,7 @@ onMounted(() => {
   color: #fff;
   z-index: 3;
   box-sizing: border-box;
+  cursor: pointer;
 }
 .info-window {
   position: absolute;
