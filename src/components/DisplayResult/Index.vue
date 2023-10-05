@@ -548,9 +548,9 @@ const initPie = () => {
     const curAngle = proportion * allAngle
     startAngle = startAngle + intervalAngle
     let endAngle = startAngle + curAngle
-    if (index == pieList.length - 1 && index !== 12) {
-      endAngle = Math.PI * 2 * percent.value
-    }
+    // if (index == pieList.length - 1 && index !== 12) {
+    //   endAngle = Math.PI * 2 * percent.value
+    // }
     pieInfoList.push({ startAngle, endAngle, proportion })
     startAngle = endAngle
   })
