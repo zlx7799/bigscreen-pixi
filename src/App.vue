@@ -3,7 +3,7 @@
  * @Author: zhoulx
  * @Date: 2023-09-25 08:47:24
  * @LastEditors: zhoulx
- * @LastEditTime: 2023-10-05 04:44:51
+ * @LastEditTime: 2023-10-05 13:59:41
 -->
 <script setup lang="ts">
 import DisplayResult from './components/DisplayResult/Index.vue'
@@ -135,12 +135,12 @@ const resetData = () => {
 
 <style scoped>
 .wrapper {
-  width: 651px;
-  height: 450px;
+  /* width: 651px;
+  height: 450px; */
   /* width: 651px;
   height: 600px; */
-  /* width: 1302px;
-  height: 900px; */
+  width: 1302px;
+  height: 900px;
   /* width: 2144px;
   height: 1922px; */
   margin: auto;

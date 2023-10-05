@@ -128,6 +128,7 @@ let centerRadialGradientProgress: centerRadialGradientProgressInterface = {
 }
 
 let ballWidth = ref<number>()
+let centerBallWidth = ref<number>()
 let percent = ref<number>(0)
 let pointerContainerStyle = computed(() => {
   return {
@@ -143,7 +144,7 @@ let pointerStyle = ref<any>({})
 let posList = ref<Array<Point>>()
 
 let centerBallStyle = computed(() => {
-  let ballWidthValue = ballWidth.value || 0
+  let ballWidthValue = centerBallWidth.value || 0
   let padding = (ballWidthValue - (ballWidthValue / 5) * 3) / 2
   return {
     width: `${ballWidthValue}px`,
@@ -333,8 +334,9 @@ const initData = () => {
   ringWidth = outermostLayerOfCenterCircleScaleLength * 2 // 渐变色环的宽度半径的 20% 可以改
   ringRadius =
     pieRadius - pieWidth / 2 - outermostLayerOfCenterCircleScaleLength / 2 - ringWidth / 2 // 拿饼的半径一层一层往下算 环的半径也在中间
-
-  ballWidth.value = (ringRadius - ringWidth / 2 - outermostLayerOfCenterCircleScaleLength / 2) * 2 // 球的宽度
+  let tmpWidth = (ringRadius - ringWidth / 2 - outermostLayerOfCenterCircleScaleLength / 2) * 2
+  ballWidth.value = tmpWidth > 90 ? 90 :  tmpWidth// 球的宽度
+  centerBallWidth.value = (ringRadius - ringWidth / 2 - outermostLayerOfCenterCircleScaleLength / 2) * 2 // 中心球的宽度
   percent.value =
     props.pieList.reduce((sum, item) => sum + item.departmentNums, 0) / props.allDepartmentNums // 百分比
 

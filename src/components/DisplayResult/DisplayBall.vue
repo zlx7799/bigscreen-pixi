@@ -37,8 +37,8 @@ let ballContainerStyle = computed(() => {
     left: `${props.pos.x}px`,
     marginLeft: `${-ballWidthValue / 2}px`,
     marginTop: `${-ballWidthValue / 2}px`,
-    width: `${ballWidthValue + lineWidth}px`,
-    height: `${ballWidthValue + lineWidth}px`,
+    width: `${ballWidthValue + lineWidth * 2}px`,
+    height: `${ballWidthValue + lineWidth * 2}px`,
     'animation-play-state': 'running'
   }
   if (isMouseMove.value){
