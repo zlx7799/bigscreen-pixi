@@ -100,12 +100,6 @@ interface Pie {
 let pieInfoList: Pie[] = []
 let lastPieEndAngle = -Math.PI / 2
 let lastPercent = 0
-// interface pieProgressInterface {
-//   currentEndAngle: number
-// }
-// let pieProgress: pieProgressInterface = {
-
-// }
 
 let ringWidth: number
 let ringRadius: number
@@ -211,6 +205,10 @@ const initCanvas = () => {
     ctx.canvas.height = height * window.devicePixelRatio
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
   }
+  // 逆时针旋转45度
+  ctx?.translate(centerPos.x, centerPos.y)
+  ctx?.rotate(-Math.PI / 2)
+  ctx?.translate(-centerPos.x, -centerPos.y)
   canvas.onmousemove = canvasMouseMove
 }
 
@@ -542,7 +540,7 @@ const initPie = () => {
   const { allDepartmentNums, pieList } = props
   const intervalNums = pieList.length + 1 // 每个饼图中间的黑色间隔总数
   const intervalAngle = Math.PI / 120
-  let startAngle = -Math.PI / 2
+  let startAngle = 0
   const allAngle = Math.PI * 2 - intervalNums * intervalAngle
   pieInfoList = []
   pieList.forEach((pie: PieItem, index: number) => {
@@ -551,7 +549,7 @@ const initPie = () => {
     startAngle = startAngle + intervalAngle
     let endAngle = startAngle + curAngle
     if (index == pieList.length - 1 && index !== 12) {
-      endAngle = -Math.PI / 2 + Math.PI * 2 * percent.value
+      endAngle = Math.PI * 2 * percent.value
     }
     pieInfoList.push({ startAngle, endAngle, proportion })
     startAngle = endAngle
@@ -561,22 +559,22 @@ const initPie = () => {
   let currentEndAngle = lastPieEndAngle
   function drawPie() {
     currentEndAngle+=drawAngleUnit
-    if (currentEndAngle >= -Math.PI / 2 + Math.PI * 2 * percent.value) {
+    if (currentEndAngle >= Math.PI * 2 * percent.value) {
       lastPieEndAngle = currentEndAngle
       lastPercent = percent.value
-      // pieProgress = {
-      //   currentEndAngle,
-      // }
       return  
     }
     ctx?.clearRect(0, 0, containerWidth, containerHeight)
     for (let i = 0; i < pieInfoList.length; i ++ ){
       let flag = false
-      canvasDrawArc(pieRadius, pieInfoList[i].startAngle - intervalAngle, pieInfoList[i].startAngle  + intervalAngle, '#000')
+      canvasDrawArc(pieRadius, pieInfoList[i].startAngle - intervalAngle, pieInfoList[i].startAngle, '#000')
       let end = pieInfoList[i].endAngle
       if(end > currentEndAngle){
         end = currentEndAngle
         flag = true
+      }
+      if (pieInfoList[i].startAngle > end){
+        break;
       }
       canvasDrawArc(pieRadius, pieInfoList[i].startAngle, end, PIE_COLOR_LIST[i])
       if(flag){
@@ -586,9 +584,6 @@ const initPie = () => {
     window.requestAnimationFrame(drawPie)
   }
   window.requestAnimationFrame(drawPie)
-
-}
-const updatePie = () => {
 
 }
 const canvasMouseMove = (e: any) => {
