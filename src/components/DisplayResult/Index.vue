@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, toValue, computed, watch, nextTick } from 'vue'
+import { onMounted, ref, toValue, computed, watch, onUnmounted } from 'vue'
 import { Application, Sprite, Graphics, Container, Ticker } from 'pixi.js'
 import StageBgImg from '@/assets/bg.png'
 import unselectedBall from '@/assets/unselected.png'
@@ -955,6 +955,12 @@ onMounted(() => {
   }
   resizeObserver.observe(wrapper.value as Element)
 })
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+});
+
 </script>
 
 <template>
