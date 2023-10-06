@@ -98,7 +98,7 @@ interface Pie {
   proportion: number
 }
 let pieInfoList: Pie[] = []
-let lastPieEndAngle = -Math.PI / 2
+let lastPieEndAngle = 0
 let lastPercent = 0
 
 let ringWidth: number
@@ -879,7 +879,7 @@ watch(
       initCenterRadialGradient(ringRadius, CONIC_RING_START_COLOR, CONIC_RING_END_COLOR)
       ctx?.clearRect(0, 0, containerWidth, containerHeight)
       lastPercent = 0
-      lastPieEndAngle = -Math.PI / 2
+      lastPieEndAngle = 0
       initPie()
     }
   },
@@ -911,6 +911,8 @@ const handleResize = (entries: Array<ResizeObserverEntry>) => {
     curNum: 0,
     degUnit: 0
   }
+  lastPercent = 0
+  lastPieEndAngle = 0
   initCanvas()
   initStarBg()
   initBg()
