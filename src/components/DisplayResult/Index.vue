@@ -110,7 +110,8 @@ interface centerRadialGradientProgressInterface {
   curNum: number
   splitNum: number
   radius: number
-  middleColor: string[][]
+  middleColor: string[][],
+  ticker?: Ticker
 }
 
 let centerRadialGradientProgress: centerRadialGradientProgressInterface = {
@@ -548,9 +549,6 @@ const initPie = () => {
     const curAngle = proportion * allAngle
     startAngle = startAngle + intervalAngle
     let endAngle = startAngle + curAngle
-    // if (index == pieList.length - 1 && index !== 12) {
-    //   endAngle = Math.PI * 2 * percent.value
-    // }
     pieInfoList.push({ startAngle, endAngle, proportion })
     startAngle = endAngle
   })
@@ -594,7 +592,7 @@ const canvasMouseMove = (e: any) => {
   let pointToCenterDistance = Math.sqrt(
     Math.pow(point.x - centerPos.x, 2) + Math.pow(point.y - centerPos.y, 2)
   ) // 鼠标到圆心的距离
-  let radian = -Math.atan2(point.x - centerPos.x, point.y - centerPos.y) + Math.PI / 2// 计算弧度
+  let radian = -Math.atan2(point.x - centerPos.x, point.y - centerPos.y) + Math.PI// 计算弧度
   let startDistance = pieRadius - pieWidth / 2
   let endDistance = pieRadius + pieWidth / 2
   if (pointToCenterDistance > outermostLayerOfCenterCircleRadius) {
@@ -677,11 +675,11 @@ const initCenterRadialGradient = (radius: number, begin: string, end: string) =>
 
   let i = 0
   let drawCount = Math.floor(curNum / 60)
-  let ticker = new Ticker()
-  ticker.autoStart = true
-  ticker.add(() => {
+  centerRadialGradientProgress.ticker = new Ticker()
+  centerRadialGradientProgress.ticker.autoStart = true
+  centerRadialGradientProgress.ticker.add(() => {
     if (i == curNum) {
-      ticker.stop()
+      centerRadialGradientProgress.ticker?.stop()
       return false
     }
     if (drawCount == 1) {
@@ -690,7 +688,7 @@ const initCenterRadialGradient = (radius: number, begin: string, end: string) =>
     } else {
       for (let j = 0; j < drawCount; j++) {
         if (i == curNum) {
-          ticker.stop()
+          centerRadialGradientProgress.ticker?.stop()
           return false
         }
         drawRing(i, middleColor, curNum, radius, splitNum)
@@ -699,6 +697,7 @@ const initCenterRadialGradient = (radius: number, begin: string, end: string) =>
     }
   })
   centerRadialGradientProgress = {
+    ...centerRadialGradientProgress,
     arc: centerRadialGradientProgress.arc,
     middleColor,
     splitNum,
@@ -717,9 +716,9 @@ const updateCenterRadialGradient = () => {
   let count = fps - 1
 
   let drawCount = Math.floor(curNum / 60)
-  let ticker = new Ticker()
-  ticker.autoStart = true
-  ticker.add(() => {
+  centerRadialGradientProgress.ticker = new Ticker()
+  centerRadialGradientProgress.ticker.autoStart = true
+  centerRadialGradientProgress.ticker.add(() => {
     count++
     if (count == fps) {
       count = 0
@@ -727,7 +726,7 @@ const updateCenterRadialGradient = () => {
       return false
     }
     if (i == curNum) {
-      ticker.stop()
+      centerRadialGradientProgress.ticker?.stop()
       return false
     }
     if (drawCount == 1) {
@@ -736,7 +735,7 @@ const updateCenterRadialGradient = () => {
     } else {
       for (let j = 0; j < drawCount; j++) {
         if (i == curNum) {
-          ticker.stop()
+          centerRadialGradientProgress.ticker?.stop()
           return false
         }
         drawRing(i, middleColor, curNum, radius, splitNum)
@@ -745,6 +744,7 @@ const updateCenterRadialGradient = () => {
     }
   })
   centerRadialGradientProgress = {
+    ...centerRadialGradientProgress,
     arc: centerRadialGradientProgress.arc,
     middleColor,
     splitNum,
@@ -877,7 +877,6 @@ watch(
 
       centerRadialGradientProgress.arc.clear()
       initCenterRadialGradient(ringRadius, CONIC_RING_START_COLOR, CONIC_RING_END_COLOR)
-
       ctx?.clearRect(0, 0, containerWidth, containerHeight)
       lastPercent = 0
       lastPieEndAngle = -Math.PI / 2
@@ -886,9 +885,6 @@ watch(
   },
   { deep: true }
 )
-const reset = ()=> {
-
-}
 
 let isFirst = true
 const handleResize = (entries: Array<ResizeObserverEntry>) => {
@@ -899,6 +895,10 @@ const handleResize = (entries: Array<ResizeObserverEntry>) => {
   initData()
   app.renderer.resize(containerWidth, containerHeight)
   app.stage.removeChildren()
+  if(centerRadialGradientProgress.ticker?.started){
+    centerRadialGradientProgress.ticker?.stop()
+    centerRadialGradientProgress.arc.clear()
+  }
   centerRadialGradientProgress = {
     arc: new Graphics(),
     curNum: 0,

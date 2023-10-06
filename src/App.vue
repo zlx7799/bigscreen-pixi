@@ -3,7 +3,7 @@
  * @Author: zhoulx
  * @Date: 2023-09-25 08:47:24
  * @LastEditors: zhoulx
- * @LastEditTime: 2023-10-06 21:11:34
+ * @LastEditTime: 2023-10-07 06:55:59
 -->
 <script setup lang="ts">
 import DisplayResult from './components/DisplayResult/Index.vue'
@@ -132,15 +132,16 @@ let wrapperStyle = computed(() => {
 </script>
 
 <template>
-  <div class="wrapper" :style="wrapperStyle">
+  <!-- <div class="wrapper" :style="wrapperStyle"> -->
+  <div class="wrapper" >
     <DisplayResult :ball-list="ballList" :pie-list="pieList" @click-ball="(val) => console.log(val)" @click-center-ball="(val) => console.log(val)" />
   </div>
-  <div class="btn-container">
+  <!-- <div class="btn-container">
     <div class="btn" @click="addData">增加数据</div>
     <div class="btn" @click="resetData">重置数据</div>
     <div class="btn" @click="width *= 2; height *= 2; console.log(width, height)">放大</div>
     <div class="btn" @click="width /= 2; height /= 2">缩小</div>
-  </div>
+  </div> -->
 </template>
 
 <style scoped>
@@ -154,6 +155,8 @@ let wrapperStyle = computed(() => {
   /* width: 2144px;
   height: 1922px; */
   /* margin: auto; */
+  width: 100vw;
+  height: 100vh;
 }
 .btn-container {
   width: 300px;
