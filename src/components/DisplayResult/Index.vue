@@ -4,7 +4,7 @@ import { Application, Sprite, Graphics, Container, Ticker } from 'pixi.js'
 import StageBgImg from '@/assets/bg.png'
 import unselectedBall from '@/assets/unselected.png'
 import DisplayBall from './DisplayBall.vue'
-import { isEqual, cloneDeep } from 'lodash'
+import { isEqual, cloneDeep, debounce } from 'lodash'
 const emit = defineEmits(['click-ball', 'click-center-ball'])
 type DOMRef = HTMLElement | null
 type CanvasDomRef = HTMLCanvasElement | null
@@ -887,7 +887,7 @@ watch(
 )
 
 let isFirst = true
-const handleResize = (entries: Array<ResizeObserverEntry>) => {
+const handleResize = debounce((entries: Array<ResizeObserverEntry>) => {
   if (isFirst){
     isFirst = false
     return
@@ -930,7 +930,7 @@ const handleResize = (entries: Array<ResizeObserverEntry>) => {
       ballWidth.value
     )
   }
-}
+}, 300)
 
 const resizeObserver = new ResizeObserver(handleResize);
 
