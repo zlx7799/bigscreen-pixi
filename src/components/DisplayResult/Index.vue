@@ -39,8 +39,8 @@ const props = withDefaults(defineProps<Props>(), {
   ballList: () => [],
   pieList: () => []
 })
-
 const displayContainer = ref<DOMRef>(null)
+const wrapper = ref<DOMRef>(null)
 const displayCanvas = ref<CanvasDomRef>(null)
 const STAGE_BG_COLOR = '#010416'
 const CENTER_CIRCLE_BG_COLOR = '#000000'
@@ -70,7 +70,7 @@ let outermostLayerCircleAnimateProgress: outermostLayerCircleAnimateProgressInte
 
 const innerLayerCircleScaleColor = '#27498D'
 const innerLayerCircleScaleBGColor = '#030A4D'
-let innerLayerOfCenterStaticCircleRadius: number
+let innerLayerOfCenterStaticCircleRadius = ref<number>(0)
 let innerLayerOfCenterStaticCircleScaleLength: number
 
 let centerBlackCircleRadius: number
@@ -128,7 +128,7 @@ let pointerContainerStyle = computed(() => {
   return {
     width: '4px',
     height: `${
-      (innerLayerOfCenterStaticCircleRadius + innerLayerOfCenterStaticCircleScaleLength / 2) * 2
+      (innerLayerOfCenterStaticCircleRadius.value + innerLayerOfCenterStaticCircleScaleLength / 2) * 2
     }px`,
     transform: `rotate(${360 * percent.value}deg)`
   }
@@ -320,11 +320,11 @@ const initData = () => {
   outermostLayerOfCenterCircleRadius = Math.ceil((containerHeight * 0.5) / 2)
   outermostLayerOfCenterCircleScaleLength = Math.ceil(outermostLayerOfCenterCircleRadius * 0.1) // 最外层的刻度 暂时就是按半径的10%来算 后面的数据 基本以这个为基数
 
-  innerLayerOfCenterStaticCircleRadius =
+  innerLayerOfCenterStaticCircleRadius.value =
     outermostLayerOfCenterCircleRadius - outermostLayerOfCenterCircleScaleLength * 2 // 最外层和第二层的静态刻度之间间隙占了半径的5%
   innerLayerOfCenterStaticCircleScaleLength = Math.ceil(outermostLayerOfCenterCircleScaleLength / 3) // 第二层静态刻度 占了 3.3% 可以改 乘系数
   centerBlackCircleRadius =
-    innerLayerOfCenterStaticCircleRadius - outermostLayerOfCenterCircleScaleLength // 第二层与中间圆的间隙占了5% 黑色背底拿上一层的半径减去5%
+    innerLayerOfCenterStaticCircleRadius.value - outermostLayerOfCenterCircleScaleLength // 第二层与中间圆的间隙占了5% 黑色背底拿上一层的半径减去5%
 
   pieWidth = outermostLayerOfCenterCircleScaleLength // 饼图的宽度占了 10% 可以改 乘系数
   pieRadius = centerBlackCircleRadius - pieWidth / 2 - outermostLayerOfCenterCircleScaleLength * 0.5 // 饼的半径在中间
@@ -340,7 +340,7 @@ const initData = () => {
 
   pointerStyle.value = {
     height: `${
-      innerLayerOfCenterStaticCircleRadius -
+      innerLayerOfCenterStaticCircleRadius.value -
       ringRadius +
       ringWidth / 2 +
       innerLayerOfCenterStaticCircleScaleLength / 2
@@ -478,7 +478,7 @@ const initInnerLayerStaticCircle = () => {
   graphics.drawCircle(
     centerPos.x,
     centerPos.y,
-    innerLayerOfCenterStaticCircleRadius - innerLayerOfCenterStaticCircleScaleLength / 2
+    innerLayerOfCenterStaticCircleRadius.value - innerLayerOfCenterStaticCircleScaleLength / 2
   )
 
   graphics.lineStyle(outermostLayerCircleScaleWidth, innerLayerCircleScaleColor)
@@ -487,14 +487,14 @@ const initInnerLayerStaticCircle = () => {
     const angle = i * degUnit
     const startX =
       centerPos.x +
-      (innerLayerOfCenterStaticCircleRadius - innerLayerOfCenterStaticCircleScaleLength) *
+      (innerLayerOfCenterStaticCircleRadius.value - innerLayerOfCenterStaticCircleScaleLength) *
         Math.cos(angle)
     const startY =
       centerPos.y +
-      (innerLayerOfCenterStaticCircleRadius - innerLayerOfCenterStaticCircleScaleLength) *
+      (innerLayerOfCenterStaticCircleRadius.value - innerLayerOfCenterStaticCircleScaleLength) *
         Math.sin(angle)
-    const endX = centerPos.x + innerLayerOfCenterStaticCircleRadius * Math.cos(angle)
-    const endY = centerPos.y + innerLayerOfCenterStaticCircleRadius * Math.sin(angle)
+    const endX = centerPos.x + innerLayerOfCenterStaticCircleRadius.value * Math.cos(angle)
+    const endY = centerPos.y + innerLayerOfCenterStaticCircleRadius.value * Math.sin(angle)
 
     graphics.moveTo(startX, startY)
     graphics.lineTo(endX, endY)
@@ -886,6 +886,52 @@ watch(
   },
   { deep: true }
 )
+const reset = ()=> {
+
+}
+
+let isFirst = true
+const handleResize = (entries: Array<ResizeObserverEntry>) => {
+  if (isFirst){
+    isFirst = false
+    return
+  }
+  initData()
+  app.renderer.resize(containerWidth, containerHeight)
+  app.stage.removeChildren()
+  centerRadialGradientProgress = {
+    arc: new Graphics(),
+    curNum: 0,
+    splitNum: 0,
+    radius: 0,
+    middleColor: [[], [], [], []]
+  }
+  outermostLayerCircleAnimateProgress = {
+    graphics: new Graphics(),
+    curNum: 0,
+    degUnit: 0
+  }
+  initCanvas()
+  initStarBg()
+  initBg()
+  initOutermostLayerCircle()
+  initOutermostLayerCircleAnimate()
+  initInnerLayerStaticCircle()
+  initCenterBlackBg()
+  initPieBg()
+  initPie()
+  initCenterRadialGradient(ringRadius, CONIC_RING_START_COLOR, CONIC_RING_END_COLOR)
+  if (ballWidth.value) {
+    posList.value = generateCircles(
+      centerPos,
+      outermostLayerOfCenterCircleRadius + ballWidth.value,
+      ballWidth.value
+    )
+  }
+}
+
+const resizeObserver = new ResizeObserver(handleResize);
+
 
 onMounted(() => {
   initData()
@@ -907,11 +953,12 @@ onMounted(() => {
       ballWidth.value
     )
   }
+  resizeObserver.observe(wrapper.value as Element)
 })
 </script>
 
 <template>
-  <div class="wrapper">
+  <div class="wrapper" ref="wrapper">
     <div class="display-container" ref="displayContainer"></div>
     <canvas class="display-canvas" ref="displayCanvas"></canvas>
     <div class="center-ball" :style="centerBallStyle" @click="emit('click-center-ball')">

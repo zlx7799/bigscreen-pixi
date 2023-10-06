@@ -3,7 +3,7 @@
  * @Author: zhoulx
  * @Date: 2023-09-25 08:47:24
  * @LastEditors: zhoulx
- * @LastEditTime: 2023-10-05 13:59:41
+ * @LastEditTime: 2023-10-06 21:11:34
 -->
 <script setup lang="ts">
 import DisplayResult from './components/DisplayResult/Index.vue'
@@ -121,15 +121,25 @@ const resetData = () => {
     }
   ]
 }
+let width = ref(1302)
+let height = ref(900)
+let wrapperStyle = computed(() => {
+  return {
+    width: `${width.value}px`,
+    height: `${height.value}px`,
+  }
+})
 </script>
 
 <template>
-  <div class="wrapper">
+  <div class="wrapper" :style="wrapperStyle">
     <DisplayResult :ball-list="ballList" :pie-list="pieList" @click-ball="(val) => console.log(val)" @click-center-ball="(val) => console.log(val)" />
   </div>
   <div class="btn-container">
     <div class="btn" @click="addData">增加数据</div>
     <div class="btn" @click="resetData">重置数据</div>
+    <div class="btn" @click="width *= 2; height *= 2; console.log(width, height)">放大</div>
+    <div class="btn" @click="width /= 2; height /= 2">缩小</div>
   </div>
 </template>
 
@@ -139,11 +149,11 @@ const resetData = () => {
   height: 450px; */
   /* width: 651px;
   height: 600px; */
-  width: 1302px;
-  height: 900px;
+  /* width: 1302px;
+  height: 900px; */
   /* width: 2144px;
   height: 1922px; */
-  margin: auto;
+  /* margin: auto; */
 }
 .btn-container {
   width: 300px;
@@ -151,6 +161,9 @@ const resetData = () => {
   position: fixed;
   left: 50%;
   top: 100px;
+  position: fixed;
+  top: 10px;
+  left: 10px;
 }
 .btn-container .btn {
   cursor: pointer;
