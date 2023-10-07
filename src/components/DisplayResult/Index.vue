@@ -48,10 +48,10 @@ let containerWidth: number
 let containerHeight: number
 let app: Application
 let ctx: CanvasRenderingContext2D | null
-let centerPos: Point = {
+let centerPos = ref<Point>({
   x: 0,
   y: 0
-}
+})
 
 const outermostLayerCircleScaleColor = '#091A58'
 const outermostLayerCircleScaleWidth = 3
@@ -144,8 +144,8 @@ let centerBallStyle = computed(() => {
   return {
     width: `${ballWidthValue}px`,
     height: `${ballWidthValue}px`,
-    top: `${centerPos.y}px`,
-    left: `${centerPos.x}px`,
+    top: `${centerPos.value.y}px`,
+    left: `${centerPos.value.x}px`,
     marginLeft: `${-ballWidthValue / 2}px`,
     marginTop: `${-ballWidthValue / 2}px`,
     fontSize: `${ballWidthValue / 5}px`,
@@ -207,9 +207,9 @@ const initCanvas = () => {
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio)
   }
   // 逆时针旋转45度
-  ctx?.translate(centerPos.x, centerPos.y)
+  ctx?.translate(centerPos.value.x, centerPos.value.y)
   ctx?.rotate(-Math.PI / 2)
-  ctx?.translate(-centerPos.x, -centerPos.y)
+  ctx?.translate(-centerPos.value.x, -centerPos.value.y)
   canvas.onmousemove = canvasMouseMove
 }
 
@@ -268,12 +268,12 @@ const initStarBg = () => {
     star.x = Math.random() * containerWidth
     star.y = Math.random() * containerHeight
     stars.push(star)
-    star.distance = Math.sqrt((star.x - centerPos.x / 2) ** 2 + (star.y - centerPos.y / 2) ** 2)
+    star.distance = Math.sqrt((star.x - centerPos.value.x / 2) ** 2 + (star.y - centerPos.value.y / 2) ** 2)
     app.stage.addChild(star)
   }
 
   app.ticker.add(() => {
-    const radius = Math.max(centerPos.x, centerPos.y)
+    const radius = Math.max(centerPos.value.x, centerPos.value.y)
 
     for (let i = 0; i < numStars; i++) {
       const star = stars[i]
@@ -288,8 +288,8 @@ const initStarBg = () => {
       star.speed += speed // 更新速度
       star.distance += distance // 更新距离
 
-      const x = centerPos.x + Math.cos(star.angle) * star.distance
-      const y = centerPos.y + Math.sin(star.angle) * star.distance
+      const x = centerPos.value.x + Math.cos(star.angle) * star.distance
+      const y = centerPos.value.y + Math.sin(star.angle) * star.distance
 
       star.position.set(x, y) // 设置新位置
 
@@ -314,7 +314,7 @@ const initData = () => {
   let { width = 0, height = 0 } = getElSize(toValue(displayContainer))
   containerWidth = width
   containerHeight = height
-  centerPos = {
+  centerPos.value = {
     x: containerWidth / 2,
     y: containerHeight / 2
   }
@@ -361,15 +361,15 @@ const initOutermostLayerCircle = () => {
   for (let i = 0; i < 100; i++) {
     const angle = i * degUnit
     const startX =
-      centerPos.x +
+    centerPos.value.x +
       (outermostLayerOfCenterCircleRadius - outermostLayerOfCenterCircleScaleLength) *
         Math.cos(angle)
     const startY =
-      centerPos.y +
+    centerPos.value.y +
       (outermostLayerOfCenterCircleRadius - outermostLayerOfCenterCircleScaleLength) *
         Math.sin(angle)
-    const endX = centerPos.x + outermostLayerOfCenterCircleRadius * Math.cos(angle)
-    const endY = centerPos.y + outermostLayerOfCenterCircleRadius * Math.sin(angle)
+    const endX = centerPos.value.x + outermostLayerOfCenterCircleRadius * Math.cos(angle)
+    const endY = centerPos.value.y + outermostLayerOfCenterCircleRadius * Math.sin(angle)
 
     graphics.moveTo(startX, startY)
     graphics.lineTo(endX, endY)
@@ -388,8 +388,8 @@ const initOutermostLayerCircleAnimate = () => {
   const degUnit = (Math.PI * 2) / 100 // 3.6度
   const container = new Container()
   app.stage.addChild(container)
-  container.x = centerPos.x
-  container.y = centerPos.y
+  container.x = centerPos.value.x
+  container.y = centerPos.value.y
   container.rotation = -Math.PI / 2
 
   let i = 0
@@ -477,8 +477,8 @@ const initInnerLayerStaticCircle = () => {
   // 绘制内层静态圆 背景色
   graphics.lineStyle(innerLayerOfCenterStaticCircleScaleLength * 2, innerLayerCircleScaleBGColor)
   graphics.drawCircle(
-    centerPos.x,
-    centerPos.y,
+    centerPos.value.x,
+    centerPos.value.y,
     innerLayerOfCenterStaticCircleRadius.value - innerLayerOfCenterStaticCircleScaleLength / 2
   )
 
@@ -487,15 +487,15 @@ const initInnerLayerStaticCircle = () => {
   for (let i = 0; i < 100; i++) {
     const angle = i * degUnit
     const startX =
-      centerPos.x +
+    centerPos.value.x +
       (innerLayerOfCenterStaticCircleRadius.value - innerLayerOfCenterStaticCircleScaleLength) *
         Math.cos(angle)
     const startY =
-      centerPos.y +
+    centerPos.value.y +
       (innerLayerOfCenterStaticCircleRadius.value - innerLayerOfCenterStaticCircleScaleLength) *
         Math.sin(angle)
-    const endX = centerPos.x + innerLayerOfCenterStaticCircleRadius.value * Math.cos(angle)
-    const endY = centerPos.y + innerLayerOfCenterStaticCircleRadius.value * Math.sin(angle)
+    const endX = centerPos.value.x + innerLayerOfCenterStaticCircleRadius.value * Math.cos(angle)
+    const endY = centerPos.value.y + innerLayerOfCenterStaticCircleRadius.value * Math.sin(angle)
 
     graphics.moveTo(startX, startY)
     graphics.lineTo(endX, endY)
@@ -510,7 +510,7 @@ const initInnerLayerStaticCircle = () => {
 const initCenterBlackBg = () => {
   const circle = new Graphics()
   circle.beginFill(CENTER_CIRCLE_BG_COLOR)
-  circle.drawCircle(centerPos.x, centerPos.y, centerBlackCircleRadius)
+  circle.drawCircle(centerPos.value.x, centerPos.value.y, centerBlackCircleRadius)
   circle.endFill()
   app.stage.addChild(circle)
 }
@@ -518,14 +518,14 @@ const initCenterBlackBg = () => {
 const initPieBg = () => {
   const pieBg = new Graphics()
   pieBg.lineStyle(pieWidth, PIE_DEFAULT_COLOR)
-  pieBg.drawCircle(centerPos.x, centerPos.y, pieRadius)
+  pieBg.drawCircle(centerPos.value.x, centerPos.value.y, pieRadius)
   app.stage.addChild(pieBg)
 }
 
 const canvasDrawArc = (radius: number, startAngle: number, endAngle: number, color: string) => {
   if (ctx) {
     ctx.beginPath()
-    ctx.arc(centerPos.x, centerPos.y, radius, startAngle, endAngle)
+    ctx.arc(centerPos.value.x, centerPos.value.y, radius, startAngle, endAngle)
     ctx.strokeStyle = color
     ctx.lineWidth = pieWidth
     ctx.stroke()
@@ -590,9 +590,9 @@ const canvasMouseMove = (e: any) => {
     y: e.offsetY
   }
   let pointToCenterDistance = Math.sqrt(
-    Math.pow(point.x - centerPos.x, 2) + Math.pow(point.y - centerPos.y, 2)
+    Math.pow(point.x - centerPos.value.x, 2) + Math.pow(point.y - centerPos.value.y, 2)
   ) // 鼠标到圆心的距离
-  let radian = -Math.atan2(point.x - centerPos.x, point.y - centerPos.y) + Math.PI// 计算弧度
+  let radian = -Math.atan2(point.x - centerPos.value.x, point.y - centerPos.value.y) + Math.PI// 计算弧度
   let startDistance = pieRadius - pieWidth / 2
   let endDistance = pieRadius + pieWidth / 2
   if (pointToCenterDistance > outermostLayerOfCenterCircleRadius) {
@@ -626,16 +626,16 @@ const drawRing = (
   )
   if (i == curNum - 1) {
     arc.arc(
-      centerPos.x,
-      centerPos.y,
+      centerPos.value.x,
+      centerPos.value.y,
       radius,
       -Math.PI / 2 + ((Math.PI * 2) / splitNum) * i,
       -Math.PI / 2 + ((Math.PI * 2) / splitNum) * (i + 1)
     )
   } else {
     arc.arc(
-      centerPos.x,
-      centerPos.y,
+      centerPos.value.x,
+      centerPos.value.y,
       radius,
       -Math.PI / 2 + ((Math.PI * 2) / splitNum) * i,
       -Math.PI / 2 + ((Math.PI * 2) / splitNum) * (i + 2)
@@ -841,7 +841,7 @@ watch(
     }
     if (ballWidth.value) {
       posList.value = generateCircles(
-        centerPos,
+        centerPos.value,
         outermostLayerOfCenterCircleRadius + ballWidth.value,
         ballWidth.value
       )
@@ -925,7 +925,7 @@ const handleResize = debounce((entries: Array<ResizeObserverEntry>) => {
   initCenterRadialGradient(ringRadius, CONIC_RING_START_COLOR, CONIC_RING_END_COLOR)
   if (ballWidth.value) {
     posList.value = generateCircles(
-      centerPos,
+      centerPos.value,
       outermostLayerOfCenterCircleRadius + ballWidth.value,
       ballWidth.value
     )
@@ -950,7 +950,7 @@ onMounted(() => {
   initCenterRadialGradient(ringRadius, CONIC_RING_START_COLOR, CONIC_RING_END_COLOR)
   if (ballWidth.value) {
     posList.value = generateCircles(
-      centerPos,
+      centerPos.value,
       outermostLayerOfCenterCircleRadius + ballWidth.value,
       ballWidth.value
     )
