@@ -602,7 +602,11 @@ const canvasMouseMove = (e: any) => {
     if(pieInfoList.length > 0){
       let index = pieInfoList.findIndex(pie => radian > pie.startAngle && radian < pie.endAngle)
       if(index != -1){
-        handleShowPieInfoWindow({...props.pieList[index], index}, point)
+        console.log('%c point2', 'color: red', point, );
+        let arcCenterPoint = getCenterPointPos(centerPos.value, { x: centerPos.value.x, y: centerPos.value.y - pieRadius}, pieInfoList[index].startAngle + (pieInfoList[index].endAngle - pieInfoList[index].startAngle) / 2)
+        console.log('%c arcCenterPoint', 'color: red', arcCenterPoint, );
+        handleShowPieInfoWindow({...props.pieList[index], index}, arcCenterPoint) // 用弹框的位置明显看出中心点的位置来校验算的对不对
+        // handleShowPieInfoWindow({...props.pieList[index], index}, point)
       } else {
         handleHideBallInfoWindow()
       }
@@ -610,6 +614,12 @@ const canvasMouseMove = (e: any) => {
   } else {
     handleHideBallInfoWindow()
   }
+}
+
+const getCenterPointPos = (center: Point, centerTop: Point, angle: number) => {
+  let x = center.x + (centerTop.x - center.x) * Math.cos(angle) - (centerTop.y - center.y) * Math.sin(angle)
+  let y = center.y + (centerTop.x - center.x) * Math.sin(angle) + (centerTop.y - center.y) * Math.cos(angle)
+  return { x, y }
 }
 
 const drawRing = (
@@ -820,8 +830,10 @@ const handleShowPieInfoWindow = (pieInfo: PieItem, pos: Point) => {
 const infoWindowStyle = computed(() => {
   if (infoWindowInfo.value.x && infoWindowInfo.value.y && ballWidth.value) {
     return {
-      top: `${infoWindowInfo.value.y - ballWidth.value / 2}px`,
-      left: `${infoWindowInfo.value.x + ballWidth.value / 2 + 10}px`
+      // top: `${infoWindowInfo.value.y - ballWidth.value / 2}px`,
+      // left: `${infoWindowInfo.value.x + ballWidth.value / 2 + 10}px`
+      top: `${infoWindowInfo.value.y}px`,
+      left: `${infoWindowInfo.value.x}px`
     }
   } else {
     return {}
