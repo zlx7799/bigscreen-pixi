@@ -96,6 +96,7 @@ interface Pie {
   startAngle: number
   endAngle: number
   proportion: number
+  arcCenterPoint: Point
 }
 let pieInfoList: Pie[] = []
 let lastPieEndAngle = 0
@@ -549,7 +550,8 @@ const initPie = () => {
     const curAngle = proportion * allAngle
     startAngle = startAngle + intervalAngle
     let endAngle = startAngle + curAngle
-    pieInfoList.push({ startAngle, endAngle, proportion })
+    let arcCenterPoint = getCenterPointPos(centerPos.value, { x: centerPos.value.x, y: centerPos.value.y - pieRadius}, startAngle + (endAngle - startAngle) / 2)
+    pieInfoList.push({ startAngle, endAngle, proportion, arcCenterPoint })
     startAngle = endAngle
   })
 
@@ -602,17 +604,16 @@ const canvasMouseMove = (e: any) => {
     if(pieInfoList.length > 0){
       let index = pieInfoList.findIndex(pie => radian > pie.startAngle && radian < pie.endAngle)
       if(index != -1){
-        console.log('%c point2', 'color: red', point, );
-        let arcCenterPoint = getCenterPointPos(centerPos.value, { x: centerPos.value.x, y: centerPos.value.y - pieRadius}, pieInfoList[index].startAngle + (pieInfoList[index].endAngle - pieInfoList[index].startAngle) / 2)
-        console.log('%c arcCenterPoint', 'color: red', arcCenterPoint, );
-        handleShowPieInfoWindow({...props.pieList[index], index}, arcCenterPoint) // 用弹框的位置明显看出中心点的位置来校验算的对不对
-        // handleShowPieInfoWindow({...props.pieList[index], index}, point)
+        // console.log('%c point2', 'color: red', point, );
+        // console.log('%c arcCenterPoint', 'color: red', arcCenterPoint, );
+        // handleShowPieInfoWindow({...props.pieList[index], index}, arcCenterPoint) // 用弹框的位置明显看出中心点的位置来校验算的对不对
+        handleShowPieInfoWindow({...props.pieList[index], index}, point)
       } else {
-        handleHideBallInfoWindow()
+        handleHideBallInfoWindow('pie')
       }
     }
   } else {
-    handleHideBallInfoWindow()
+    handleHideBallInfoWindow('pie')
   }
 }
 
@@ -816,6 +817,8 @@ const handleShowBallInfoWindow = (ballInfo: BallItem) => {
 
 const handleShowPieInfoWindow = (pieInfo: PieItem, pos: Point) => {
   let index = pieInfo.index
+  currentShowPieIndex = index! + 1 // 增加体验感,如果悬浮 从悬浮之后的开始继续轮询
+  pauseLoopShowPieInfoWindow()
   if (index || index === 0) {
     infoWindowInfo.value = {
       ...pieInfo,
@@ -829,20 +832,74 @@ const handleShowPieInfoWindow = (pieInfo: PieItem, pos: Point) => {
 }
 const infoWindowStyle = computed(() => {
   if (infoWindowInfo.value.x && infoWindowInfo.value.y && ballWidth.value) {
-    return {
-      // top: `${infoWindowInfo.value.y - ballWidth.value / 2}px`,
-      // left: `${infoWindowInfo.value.x + ballWidth.value / 2 + 10}px`
-      top: `${infoWindowInfo.value.y}px`,
-      left: `${infoWindowInfo.value.x}px`
-    }
+    // if (infoWindowInfo.value.type == 'ball'){
+      return {
+        top: `${infoWindowInfo.value.y - ballWidth.value / 2}px`,
+        left: `${infoWindowInfo.value.x + ballWidth.value / 2 + 10}px`
+      }
+    // } else {
+    //   return {
+    //     top: `${infoWindowInfo.value.y - pieWidth}px`,
+    //     left: `${infoWindowInfo.value.x + pieWidth}px`
+    //   }
+    // }
   } else {
     return {}
   }
 })
-const handleHideBallInfoWindow = () => {
+const handleHideBallInfoWindow = (source: string) => {
+  if (source == 'pie' && !intervalTimer){
+    openLoopShowPieInfoWindow()
+  }
   infoWindowInfo.value = {
     visible: false
   }
+}
+
+const infoWindowInfoLoop = ref<any>({})
+
+const handleShowPieInfoLoopWindow = (pieInfo: PieItem, pos: Point) => {
+  console.log('%c pieInfo, pos', 'color: red', pieInfo, pos, );
+  let index = pieInfo.index
+  if (index || index === 0) {
+    infoWindowInfoLoop.value = {
+      ...pieInfo,
+      x: pos.x,
+      y: pos.y,
+      visible: true,
+      text: `第${pieInfo.inspectRound}轮`,
+      type: 'pie'
+    }
+  }
+}
+const infoWindowLoopStyle = computed(() => {
+  if (infoWindowInfoLoop.value.x && infoWindowInfoLoop.value.y) {
+      return {
+        top: `${infoWindowInfoLoop.value.y}px`,
+        left: `${infoWindowInfoLoop.value.x}px`
+      }
+  } else {
+    return {}
+  }
+})
+let intervalTimer: number | null = null;
+let currentShowPieIndex = 0;
+const beginLoopShowPieInfoWindow = () => {
+  intervalTimer = setInterval(() => {
+    handleShowPieInfoLoopWindow( { ...props.pieList[currentShowPieIndex], index: currentShowPieIndex }, pieInfoList[currentShowPieIndex].arcCenterPoint)
+    currentShowPieIndex++
+    if (currentShowPieIndex >= pieInfoList.length){
+      currentShowPieIndex = 0
+    }
+  }, 2000)
+}
+const pauseLoopShowPieInfoWindow = () => {
+  infoWindowInfoLoop.value.visible = false
+  clearInterval(intervalTimer!)
+  intervalTimer = null
+}
+const openLoopShowPieInfoWindow = () => {
+  beginLoopShowPieInfoWindow()
 }
 
 watch(
@@ -960,6 +1017,7 @@ onMounted(() => {
   initPieBg()
   initPie()
   initCenterRadialGradient(ringRadius, CONIC_RING_START_COLOR, CONIC_RING_END_COLOR)
+  beginLoopShowPieInfoWindow()
   if (ballWidth.value) {
     posList.value = generateCircles(
       centerPos.value,
@@ -995,7 +1053,7 @@ onUnmounted(() => {
         :pos="posList && posList[index]"
         @click-ball="(ballInfo) => handleClickBall({ ...ballInfo, index })"
         @mouse-move-ball="(ballInfo) => handleShowBallInfoWindow({ ...ballInfo, index })"
-        @mouse-leave-ball="handleHideBallInfoWindow"
+        @mouse-leave-ball="() => handleHideBallInfoWindow('ball')"
       ></display-ball>
     </template>
     <div class="info-window" v-if="infoWindowInfo.visible" :style="infoWindowStyle">
@@ -1016,6 +1074,13 @@ onUnmounted(() => {
           <div class="content">{{ infoWindowInfo.departmentNums }}</div>
         </div>
       </template>
+    </div>
+    <div class="info-window" v-show="infoWindowInfoLoop.visible" :style="infoWindowLoopStyle">
+      <div class="title">{{ infoWindowInfoLoop.text }}</div>
+      <div class="row">
+        <div class="label"><span class="circle"></span>部门数</div>
+        <div class="content">{{ infoWindowInfoLoop.departmentNums }}</div>
+      </div>
     </div>
   </div>
 </template>
